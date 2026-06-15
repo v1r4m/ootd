@@ -35,8 +35,8 @@ sudo usermod -aG docker $USER
 git clone <레포 URL> ootd && cd ootd
 
 cp .env.production.example .env
-# .env 편집: GEMINI_API_KEY 입력, APP_URL 확인,
-#            id -u / id -g 가 1000이 아니면 APP_UID/APP_GID 수정
+# .env 편집: GEMINI_API_KEY 입력, APP_URL 확인
+# (APP_UID/APP_GID 는 deploy.sh 가 호스트 값으로 자동 감지하므로 손댈 필요 없음)
 nano .env
 
 # 배포 (APP_KEY 는 deploy.sh 가 composer install 후 자동 생성)
@@ -50,6 +50,14 @@ chmod +x deploy.sh
 `https://ootd.viram.dev` 접속 → 첫 인증서 발급에 10~30초 걸릴 수 있다.
 
 ---
+
+### 권한 오류가 나면
+`vendor does not exist and could not be created` 또는 비슷한 쓰기 오류는
+프로젝트 디렉터리 소유자가 현재 사용자가 아니어서 생긴다 (root 로 clone 한 경우 등):
+```bash
+sudo chown -R "$(id -u):$(id -g)" .
+./deploy.sh
+```
 
 ## 2. 이후 업데이트
 

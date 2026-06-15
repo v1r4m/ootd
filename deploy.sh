@@ -10,6 +10,19 @@ if [ ! -f .env ]; then
     exit 1
 fi
 
+# 컨테이너를 호스트 사용자 uid/gid 로 실행 → 바인드마운트한 vendor/·DB 쓰기 권한 확보.
+# (shell 환경변수가 .env 의 APP_UID/APP_GID 보다 우선 적용된다)
+export APP_UID="$(id -u)"
+export APP_GID="$(id -g)"
+
+# 디렉터리가 현재 사용자 소유가 아니면 컨테이너도 못 쓴다 (보통 root 로 clone 한 경우)
+if [ ! -w . ] || { [ -d database ] && [ ! -w database ]; }; then
+    echo "✗ 프로젝트 디렉터리에 쓰기 권한이 없습니다 (root 로 clone 했을 가능성)." >&2
+    echo "  아래 실행 후 다시 시도하세요:" >&2
+    echo "    sudo chown -R \$(id -u):\$(id -g) ." >&2
+    exit 1
+fi
+
 echo "▶ 코드 가져오기"
 git pull --ff-only
 

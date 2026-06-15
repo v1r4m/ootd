@@ -15,6 +15,10 @@ services:
     # id -u 결과가 1000이 아니면 .env 의 APP_UID/APP_GID 로 맞춘다.
     user: "${APP_UID:-1000}:${APP_GID:-1000}"
     env_file: .env
+    # 컨테이너 사용자에 home 이 없어 composer/artisan 이 쓰기 가능한 HOME 을 필요로 한다
+    environment:
+      HOME: /tmp
+      COMPOSER_CACHE_DIR: /tmp/composer-cache
     volumes:
       - ./:/var/www/html
     expose:
