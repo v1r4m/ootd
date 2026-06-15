@@ -1,6 +1,6 @@
 # 배포 가이드 (EC2 + Docker Compose + Caddy)
 
-`diary.viram.dev` 에 올리는 절차. 스택은 **app(php-fpm) + web(Caddy 자동 HTTPS)**,
+`ootd.viram.dev` 에 올리는 절차. 스택은 **app(php-fpm) + web(Caddy 자동 HTTPS)**,
 DB는 SQLite(파일 하나), 이미지/DB는 호스트에 남아 백업이 쉽다.
 
 ---
@@ -22,7 +22,7 @@ sudo usermod -aG docker $USER
 ```
 
 ### Cloudflare DNS
-- `diary` A 레코드 → **EC2 퍼블릭 IP**
+- `ootd` A 레코드 → **EC2 퍼블릭 IP**
 - **Proxy status = DNS only (회색 구름)** 으로 둘 것.
   주황 구름(프록시)이면 Caddy의 Let's Encrypt 발급(80번 챌린지)이 막힌다.
   (나중에 프록시를 켜고 싶으면 Cloudflare Origin 인증서 방식으로 전환 — 아래 참고)
@@ -39,15 +39,15 @@ cp .env.production.example .env
 #            id -u / id -g 가 1000이 아니면 APP_UID/APP_GID 수정
 nano .env
 
-# APP_KEY 생성
-docker compose -f compose.prod.yaml run --rm app php artisan key:generate
-
-# 배포
+# 배포 (APP_KEY 는 deploy.sh 가 composer install 후 자동 생성)
 chmod +x deploy.sh
 ./deploy.sh
 ```
 
-`https://diary.viram.dev` 접속 → 첫 인증서 발급에 10~30초 걸릴 수 있다.
+> APP_KEY 를 직접 생성하지 말 것. `key:generate` 는 vendor 설치 이후에만 동작하므로
+> `deploy.sh` 가 의존성 설치 직후 자동으로 처리한다.
+
+`https://ootd.viram.dev` 접속 → 첫 인증서 발급에 10~30초 걸릴 수 있다.
 
 ---
 

@@ -19,6 +19,12 @@ $COMPOSE build
 echo "▶ PHP 의존성 설치"
 $COMPOSE run --rm app composer install --no-dev --optimize-autoloader --no-interaction
 
+# APP_KEY 가 비어 있으면 생성 (vendor 설치 이후라야 가능)
+if ! grep -qE '^APP_KEY=base64:' .env; then
+    echo "▶ APP_KEY 생성"
+    $COMPOSE run --rm app php artisan key:generate --force
+fi
+
 # SQLite 파일 보장 (git에는 안 올라가므로 최초 배포 시 없음)
 [ -f database/database.sqlite ] || { touch database/database.sqlite; echo "  ↳ database/database.sqlite 생성"; }
 
