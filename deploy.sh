@@ -66,4 +66,4 @@ $COMPOSE run --rm app php artisan optimize
 echo "▶ 서비스 기동"
 $COMPOSE up -d
 
-echo "✅ 배포 완료 → https://diary.viram.dev"
+echo "✅ 배포 완료 → https://ootd.viram.dev (eta-caddy 라우팅 설정 후 접속)"
