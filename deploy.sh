@@ -10,6 +10,13 @@ if [ ! -f .env ]; then
     exit 1
 fi
 
+# root/sudo 로 돌리면 생성 파일이 root 소유가 되어 권한 문제가 재발한다.
+if [ "$(id -u)" = "0" ]; then
+    echo "⚠ root(sudo)로 실행 중입니다 — 생성 파일이 root 소유가 됩니다." >&2
+    echo "  docker 그룹 가입 후 sudo 없이 실행을 권장:" >&2
+    echo "    sudo usermod -aG docker \$USER && newgrp docker" >&2
+fi
+
 # 컨테이너를 호스트 사용자 uid/gid 로 실행 → 바인드마운트한 vendor/·DB 쓰기 권한 확보.
 # (shell 환경변수가 .env 의 APP_UID/APP_GID 보다 우선 적용된다)
 export APP_UID="$(id -u)"
