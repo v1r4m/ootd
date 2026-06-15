@@ -10,23 +10,23 @@ if [ ! -f .env ]; then
     exit 1
 fi
 
-# root/sudo 로 돌리면 생성 파일이 root 소유가 되어 권한 문제가 재발한다.
-if [ "$(id -u)" = "0" ]; then
-    echo "⚠ root(sudo)로 실행 중입니다 — 생성 파일이 root 소유가 됩니다." >&2
-    echo "  docker 그룹 가입 후 sudo 없이 실행을 권장:" >&2
-    echo "    sudo usermod -aG docker \$USER && newgrp docker" >&2
+# 컨테이너를 "실제 사용자" uid/gid 로 실행한다.
+# 중요: 컨테이너를 root(0)로 띄우면 php-fpm 마스터만 root 고 워커는 www-data 로
+# 강등되어 storage/ 등에 못 쓴다(권한 500). non-root 로 띄우면 워커도 그 uid 로 돈다.
+# sudo 로 실행해도 SUDO_UID 로 원래 사용자를 잡아 0(root) 회피.
+export APP_UID="${SUDO_UID:-$(id -u)}"
+export APP_GID="${SUDO_GID:-$(id -g)}"
+
+if [ "$APP_UID" = "0" ]; then
+    echo "⚠ 컨테이너가 root(uid 0)로 실행됩니다 — fpm 워커가 www-data 로 강등되어" >&2
+    echo "  storage/DB 쓰기 권한 오류(500)가 납니다. 일반 사용자로 실행하세요." >&2
 fi
 
-# 컨테이너를 호스트 사용자 uid/gid 로 실행 → 바인드마운트한 vendor/·DB 쓰기 권한 확보.
-# (shell 환경변수가 .env 의 APP_UID/APP_GID 보다 우선 적용된다)
-export APP_UID="$(id -u)"
-export APP_GID="$(id -g)"
-
-# 디렉터리가 현재 사용자 소유가 아니면 컨테이너도 못 쓴다 (보통 root 로 clone 한 경우)
+# 프로젝트 파일이 그 uid 소유가 아니면 컨테이너도 못 쓴다.
 if [ ! -w . ] || { [ -d database ] && [ ! -w database ]; }; then
-    echo "✗ 프로젝트 디렉터리에 쓰기 권한이 없습니다 (root 로 clone 했을 가능성)." >&2
+    echo "✗ 프로젝트 디렉터리에 쓰기 권한이 없습니다." >&2
     echo "  아래 실행 후 다시 시도하세요:" >&2
-    echo "    sudo chown -R \$(id -u):\$(id -g) ." >&2
+    echo "    sudo chown -R ${APP_UID}:${APP_GID} ." >&2
     exit 1
 fi
 
