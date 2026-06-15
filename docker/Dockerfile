@@ -16,7 +16,8 @@ RUN install-php-extensions \
 # composer (deploy 시 사용)
 COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
 
-# 프로덕션 php.ini 튜닝
+# 프로덕션 php.ini 튜닝 + fpm 워커 에러 로그 전달
 COPY docker/php.ini /usr/local/etc/php/conf.d/zzz-app.ini
+COPY docker/fpm-logging.conf /usr/local/etc/php-fpm.d/zzz-logging.conf
 
 WORKDIR /var/www/html
