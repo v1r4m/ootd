@@ -1,0 +1,39 @@
+# 프로덕션 스택: app(php-fpm) + web(Caddy, 자동 HTTPS).
+# 코드는 호스트 디렉터리를 바인드마운트한다. SQLite/아바타도 호스트에 남아 백업이 쉽다.
+#
+# 사용:  ./deploy.sh        (pull → build → install → migrate → up)
+# 로그:  docker compose -f compose.prod.yaml logs -f
+
+services:
+  app:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile
+    image: ootd-app:latest
+    restart: unless-stopped
+    # 호스트 사용자(보통 uid 1000 = ubuntu/ec2-user)로 실행 → 바인드마운트 권한 문제 회피.
+    # id -u 결과가 1000이 아니면 .env 의 APP_UID/APP_GID 로 맞춘다.
+    user: "${APP_UID:-1000}:${APP_GID:-1000}"
+    env_file: .env
+    volumes:
+      - ./:/var/www/html
+    expose:
+      - "9000"
+
+  web:
+    image: caddy:2
+    restart: unless-stopped
+    depends_on:
+      - app
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./docker/Caddyfile:/etc/caddy/Caddyfile:ro
+      - ./:/var/www/html:ro
+      - caddy_data:/data
+      - caddy_config:/config
+
+volumes:
+  caddy_data:
+  caddy_config:

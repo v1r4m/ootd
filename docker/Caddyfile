@@ -1,0 +1,17 @@
+# 도메인을 바꾸려면 아래 호스트명만 수정.
+diary.viram.dev {
+	root * /var/www/html/public
+	encode gzip
+
+	# .php 요청은 app 컨테이너의 php-fpm(9000)으로.
+	# 아바타 생성이 길어질 수 있어 read_timeout 을 넉넉히 잡는다.
+	php_fastcgi app:9000 {
+		read_timeout 180s
+	}
+
+	file_server
+
+	# storage 심볼릭 링크(public/storage → ../storage/app/public)로 아바타 제공
+	@avatars path /storage/*
+	header @avatars Cache-Control "public, max-age=86400"
+}
