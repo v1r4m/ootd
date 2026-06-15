@@ -12,7 +12,9 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware): void {
-        //
+        // 프록시 체인(eta-caddy → ootd-web) 뒤에 있으므로 X-Forwarded-* 를 신뢰해
+        // HTTPS 스킴을 올바르게 인식한다.
+        $middleware->trustProxies(at: '*');
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         $exceptions->shouldRenderJsonWhen(

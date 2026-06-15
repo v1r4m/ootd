@@ -1,31 +1,25 @@
-# 배포 가이드 (EC2 + Docker Compose + Caddy)
+# 배포 가이드 (EC2 + Docker Compose, 공용 프록시 뒤)
 
-`ootd.viram.dev` 에 올리는 절차. 스택은 **app(php-fpm) + web(Caddy 자동 HTTPS)**,
-DB는 SQLite(파일 하나), 이미지/DB는 호스트에 남아 백업이 쉽다.
+`ootd.viram.dev` 에 올리는 절차.
+
+이 EC2엔 이미 **`eta-caddy` 가 80/443 을 점유한 공용 리버스 프록시**로 돌고 있다.
+그래서 우리 스택은 호스트 포트를 열지 않고 eta-caddy 와 같은 네트워크에 붙어,
+eta-caddy 가 TLS 를 종료하고 `ootd.viram.dev` 를 `http://ootd-web:80` 으로 넘긴다.
+
+```
+eta-caddy (443, TLS)  →  ootd-web (내부 :80, Caddy)  →  ootd-app (php-fpm)
+```
+
+DB는 SQLite(파일 하나), 이미지/DB는 호스트 바인드마운트라 백업이 쉽다.
 
 ---
 
-## 0. 사전 준비 (한 번만)
-
-### EC2 보안 그룹 (인바운드)
-| 포트 | 소스 | 용도 |
-|------|------|------|
-| 22   | 내 IP만 | SSH |
-| 80   | 0.0.0.0/0 | HTTP(인증서 발급 + 리다이렉트) |
-| 443  | 0.0.0.0/0 | HTTPS |
-
-### Docker 설치 (Ubuntu 기준)
-```bash
-curl -fsSL https://get.docker.com | sudo sh
-sudo usermod -aG docker $USER
-# 로그아웃 후 재접속 (그룹 적용)
-```
+## 0. 사전 준비
 
 ### Cloudflare DNS
-- `ootd` A 레코드 → **EC2 퍼블릭 IP**
-- **Proxy status = DNS only (회색 구름)** 으로 둘 것.
-  주황 구름(프록시)이면 Caddy의 Let's Encrypt 발급(80번 챌린지)이 막힌다.
-  (나중에 프록시를 켜고 싶으면 Cloudflare Origin 인증서 방식으로 전환 — 아래 참고)
+- `ootd` A 레코드 → **EC2 퍼블릭 IP** (이미 다른 도메인이 이 IP를 가리키고 있으면 같은 IP)
+- TLS는 eta-caddy(Let's Encrypt)가 처리하므로, 다른 도메인들과 동일한 구름 설정을 따른다.
+- 보안 그룹은 이미 80/443 이 열려 있을 것(eta-caddy 가 쓰는 중). 추가 작업 불필요.
 
 ---
 
@@ -35,65 +29,90 @@ sudo usermod -aG docker $USER
 git clone <레포 URL> ootd && cd ootd
 
 cp .env.production.example .env
-# .env 편집: GEMINI_API_KEY 입력, APP_URL 확인
-# (APP_UID/APP_GID 는 deploy.sh 가 호스트 값으로 자동 감지하므로 손댈 필요 없음)
 nano .env
+#  - GEMINI_API_KEY 입력
+#  - PROXY_NETWORK 를 eta-caddy 의 네트워크 이름으로 설정 (아래 2번에서 확인)
+#  - APP_UID/APP_GID 는 deploy.sh 가 자동 감지하므로 손댈 필요 없음
+```
 
-# 배포 (APP_KEY 는 deploy.sh 가 composer install 후 자동 생성)
+### 2. 공용 프록시 연동
+
+**(a) eta-caddy 의 네트워크 이름 확인 → `.env` 의 `PROXY_NETWORK` 에 기입**
+```bash
+docker inspect eta-caddy-1 --format '{{range $k,$v := .NetworkSettings.Networks}}{{$k}} {{end}}'
+# 예: eta_default  →  .env 에  PROXY_NETWORK=eta_default
+```
+
+**(b) 배포** (APP_KEY 는 composer install 후 deploy.sh 가 자동 생성)
+```bash
 chmod +x deploy.sh
 ./deploy.sh
 ```
 
-> APP_KEY 를 직접 생성하지 말 것. `key:generate` 는 vendor 설치 이후에만 동작하므로
-> `deploy.sh` 가 의존성 설치 직후 자동으로 처리한다.
+**(c) eta-caddy 의 Caddyfile 에 사이트 블록 추가**
+먼저 eta-caddy 의 Caddyfile 이 호스트 어디에 마운트됐는지 확인:
+```bash
+docker inspect eta-caddy-1 --format '{{range .Mounts}}{{.Source}} -> {{.Destination}}{{"\n"}}{{end}}'
+```
+그 Caddyfile 에 추가:
+```
+ootd.viram.dev {
+    reverse_proxy ootd-web:80
+}
+```
+적용(reload):
+```bash
+docker exec eta-caddy-1 caddy reload --config /etc/caddy/Caddyfile
+#  reload 가 안 되면:  docker restart eta-caddy-1
+```
 
-`https://ootd.viram.dev` 접속 → 첫 인증서 발급에 10~30초 걸릴 수 있다.
+→ `https://ootd.viram.dev` 접속 확인.
 
 ---
 
-### 권한 오류가 나면
-`vendor does not exist and could not be created` 또는 비슷한 쓰기 오류는
-프로젝트 디렉터리 소유자가 현재 사용자가 아니어서 생긴다 (root 로 clone 한 경우 등):
-```bash
-sudo chown -R "$(id -u):$(id -g)" .
-./deploy.sh
-```
+## 3. 이후 업데이트
 
-## 2. 이후 업데이트
-
-코드를 main에 푸시한 뒤 EC2에서:
 ```bash
 ./deploy.sh
 ```
-`git pull → build → composer install → migrate → optimize → up` 을 자동 수행한다.
+`git pull → build → composer install → (APP_KEY) → migrate → optimize → up` 자동 수행.
+eta-caddy 쪽 설정은 한 번만 하면 되고, 이후엔 건드릴 필요 없다.
 
 ---
 
-## 3. 백업
+## 4. 백업
 
-중요한 건 딱 두 가지 (둘 다 호스트에 있음):
 ```bash
 # DB
 cp database/database.sqlite ~/backups/ootd-$(date +%F).sqlite
 # 생성된 아바타
 tar czf ~/backups/avatars-$(date +%F).tgz storage/app/public/avatars
 ```
-크론으로 S3에 올려두면 안전하다.
 
 ---
 
-## 4. 운영 메모
+## 5. 운영 메모 / 트러블슈팅
 
-- **로그**: `docker compose -f compose.prod.yaml logs -f web` (Caddy/인증서), `... logs -f app` (PHP)
+- **로그**: `docker compose -f compose.prod.yaml logs -f web` (우리 Caddy), `... logs -f app` (PHP)
 - **재시작**: `docker compose -f compose.prod.yaml restart`
-- **아바타 생성이 동기 처리**라 요청 한 건이 Gemini 응답(10~20초)을 잡고 있는다.
-  1인용이라 지금은 문제없고 타임아웃(php 120s / Caddy 180s)도 넉넉하다.
-  트래픽이 늘면 `OutfitController` 의 생성 호출을 큐 잡으로 빼는 게 다음 단계.
-- **인스턴스 사양**: SQLite라 DB 서버가 없어 t3.small(2GB)면 여유. t3.micro도 동작하나 빌드 시 빡빡할 수 있다.
 
-### Cloudflare 프록시(주황 구름)를 켜고 싶다면
-Caddy가 HTTP-01 챌린지를 못 받으므로 둘 중 하나:
-1. **Cloudflare Origin 인증서** 발급 → Caddy에 `tls origin.crt origin.key` 로 지정, Cloudflare SSL 모드 Full(strict).
-2. Caddy에 **Cloudflare DNS 챌린지** 모듈을 넣은 커스텀 이미지 + API 토큰 사용.
+### `external network ... not found`
+`.env` 의 `PROXY_NETWORK` 이름이 eta-caddy 의 실제 네트워크와 다르다. 위 2-(a) 로 다시 확인.
 
-기본 가이드(DNS only)면 위 과정 없이 그냥 동작한다.
+### 502 Bad Gateway (eta-caddy 로그)
+eta-caddy 가 `ootd-web` 을 못 찾는 경우. 두 컨테이너가 같은 네트워크(`PROXY_NETWORK`)에 있는지 확인:
+```bash
+docker network inspect <PROXY_NETWORK> --format '{{range .Containers}}{{.Name}} {{end}}'
+# eta-caddy-1 과 ootd-web-1 이 모두 보여야 함
+```
+
+### 권한 오류 (`vendor does not exist and could not be created`)
+프로젝트 디렉터리 소유자가 현재 사용자가 아닐 때 (root 로 clone 등):
+```bash
+sudo chown -R "$(id -u):$(id -g)" .
+./deploy.sh
+```
+
+### 아바타 생성이 동기 처리
+요청 한 건이 Gemini 응답(10~20초)을 잡고 있는다. 1인용이라 지금은 문제없고
+타임아웃(php 120s / Caddy 180s)도 넉넉하다. 트래픽이 늘면 큐 잡으로 빼는 게 다음 단계.

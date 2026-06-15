@@ -1,5 +1,6 @@
-# 도메인을 바꾸려면 아래 호스트명만 수정.
-ootd.viram.dev {
+# 이 Caddy 는 내부에서 plain HTTP(:80)로만 동작한다.
+# TLS 종료와 도메인 라우팅은 앞단의 공용 프록시(eta-caddy)가 담당한다.
+:80 {
 	root * /var/www/html/public
 	encode gzip
 
