@@ -1,5 +1,5 @@
 # 도메인을 바꾸려면 아래 호스트명만 수정.
-diary.viram.dev {
+ootd.viram.dev {
 	root * /var/www/html/public
 	encode gzip
 
