@@ -2,8 +2,6 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Outfit;
-use App\Models\Profile;
 use App\Services\AvatarGenerator;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
@@ -12,11 +10,11 @@ use Throwable;
 
 class OutfitController extends Controller
 {
-    public function edit(string $date)
+    public function edit(Request $request, string $date)
     {
         $day = $this->parseDate($date);
-        $profile = Profile::firstOrFail();
-        $outfit = Outfit::where('worn_on', $day)->first();
+        $profile = $request->user()->profile;
+        $outfit = $profile->outfits()->where('worn_on', $day)->first();
 
         return view('outfits.edit', [
             'profile' => $profile,
@@ -28,15 +26,15 @@ class OutfitController extends Controller
     public function update(Request $request, string $date, AvatarGenerator $generator)
     {
         $day = $this->parseDate($date);
-        $profile = Profile::firstOrFail();
+        $profile = $request->user()->profile;
 
         $validated = $request->validate([
             'description' => ['required', 'string', 'max:1000'],
         ]);
 
-        $outfit = Outfit::updateOrCreate(
+        $outfit = $profile->outfits()->updateOrCreate(
             ['worn_on' => $day],
-            ['profile_id' => $profile->id, 'description' => $validated['description']],
+            ['description' => $validated['description']],
         );
 
         try {
@@ -54,11 +52,11 @@ class OutfitController extends Controller
             ->with('status', $day->format('n월 j일').' 옷이 기록됐어요!');
     }
 
-    public function destroy(string $date)
+    public function destroy(Request $request, string $date)
     {
         $day = $this->parseDate($date);
-        $profile = Profile::firstOrFail();
-        $outfit = Outfit::where('worn_on', $day)->firstOrFail();
+        $profile = $request->user()->profile;
+        $outfit = $profile->outfits()->where('worn_on', $day)->firstOrFail();
 
         if ($outfit->avatar_path) {
             Storage::disk('public')->delete($outfit->avatar_path);

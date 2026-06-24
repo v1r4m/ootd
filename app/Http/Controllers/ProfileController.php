@@ -2,20 +2,19 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Profile;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 
 class ProfileController extends Controller
 {
-    public function edit()
+    public function edit(Request $request)
     {
-        return view('profile.edit', ['profile' => Profile::firstOrFail()]);
+        return view('profile.edit', ['profile' => $request->user()->profile]);
     }
 
     public function update(Request $request)
     {
-        $profile = Profile::firstOrFail();
+        $profile = $request->user()->profile;
 
         $validated = $request->validate([
             'handle' => ['required', 'string', 'max:30', 'alpha_dash', Rule::unique('profiles')->ignore($profile->id)],

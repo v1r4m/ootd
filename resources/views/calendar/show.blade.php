@@ -3,6 +3,7 @@
 @section('title', $first->format('Y년 n월').' · @'.$profile->handle)
 
 @section('content')
+    @php $canEdit = auth()->check() && auth()->id() === $profile->user_id; @endphp
     <div class="calendar-head">
         <a class="month-nav" href="{{ route('calendar', ['handle' => $profile->handle, 'year' => $prev->year, 'month' => $prev->month]) }}">◀</a>
         <div class="month-title">
@@ -22,18 +23,33 @@
                 <div class="day empty"></div>
             @else
                 @php $outfit = $outfits->get($day->toDateString()); @endphp
-                <a class="day {{ $day->isSameDay($today) ? 'today' : '' }} {{ $outfit ? 'filled' : '' }}"
-                   href="{{ route('outfits.edit', ['date' => $day->toDateString()]) }}"
-                   title="{{ $outfit?->description ?? $day->format('n월 j일') }}">
-                    <span class="day-num">{{ $day->day }}</span>
-                    @if ($outfit?->avatar_path)
-                        <img class="avatar" src="{{ asset('storage/'.$outfit->avatar_path) }}" alt="{{ $outfit->description }}">
-                    @elseif ($outfit)
-                        <span class="pending">…</span>
-                    @else
-                        <span class="plus">+</span>
-                    @endif
-                </a>
+                @php
+                    $dayClass = 'day '.($day->isSameDay($today) ? 'today ' : '').($outfit ? 'filled' : '');
+                    $dayTitle = $outfit?->description ?? $day->format('n월 j일');
+                @endphp
+                @if ($canEdit)
+                    <a class="{{ $dayClass }}"
+                       href="{{ route('outfits.edit', ['date' => $day->toDateString()]) }}"
+                       title="{{ $dayTitle }}">
+                        <span class="day-num">{{ $day->day }}</span>
+                        @if ($outfit?->avatar_path)
+                            <img class="avatar" src="{{ asset('storage/'.$outfit->avatar_path) }}" alt="{{ $outfit->description }}">
+                        @elseif ($outfit)
+                            <span class="pending">…</span>
+                        @else
+                            <span class="plus">+</span>
+                        @endif
+                    </a>
+                @else
+                    <div class="{{ $dayClass }}" title="{{ $dayTitle }}">
+                        <span class="day-num">{{ $day->day }}</span>
+                        @if ($outfit?->avatar_path)
+                            <img class="avatar" src="{{ asset('storage/'.$outfit->avatar_path) }}" alt="{{ $outfit->description }}">
+                        @elseif ($outfit)
+                            <span class="pending">…</span>
+                        @endif
+                    </div>
+                @endif
             @endif
         @endforeach
     </div>
