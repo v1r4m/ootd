@@ -74,99 +74,75 @@ class AvatarGenerator
         $baseLook = trim((string) $baseLook) ?: '평범한 검은색 짧은 머리, 검은색 눈';
 
         return <<<PROMPT
-        당신은 인물을 메이플스토리 플레이어 아바타 스프라이트로 변환하는 전문 픽셀 아트 디렉터다.
+        당신은 인물을 메이플스토리 플레이어 캐릭터로 변환하는 전문 픽셀 아트 디렉터다.
+
+        ⚠️ 최우선 규칙 (다른 모든 지시보다 우선한다)
+        1. 화면에는 캐릭터가 "정확히 한 명(1명)"만 등장한다. 2명 이상, 쌍둥이, 분신, 거울상, 군중, 캐릭터 슬롯 나열 절대 금지.
+        2. "대두"(머리가 기형적으로 큰 형태) 금지. 메이플스토리 특유의 귀여운 비율은 지키되, 머리가 비정상적으로 크면 안 된다.
+        3. 신체 왜곡, 기형, 팔·다리 개수 오류, 팔다리 꼬임, 얼굴 뭉개짐 절대 금지.
 
         [입력]
         - 인물 기본 외형: {$baseLook}
         - 오늘의 의상 (가장 중요, 이 묘사를 그대로 입힌다): {$outfit}
 
         [작업]
-        1. 위 인물의 대표 외형 특징을 분석한다.
-        * 헤어스타일
-        * 머리색
-        * 눈 색상
-        * 대표 의상 (= 오늘의 의상)
-        * 대표 색상
-        2. 위 특징을 유지하면서 메이플스토리 플레이어 캐릭터 아바타 구조로 재해석한다.
+        1. 위 인물의 대표 외형 특징(헤어스타일 / 머리색 / 눈 색상 / 오늘의 의상 / 대표 색상)을 분석한다.
+        2. 그 특징을 유지하면서 메이플스토리 플레이어 캐릭터 "한 명"으로 재해석한다.
         3. 결과물은 일반 픽셀아트가 아니라 실제 메이플스토리 플레이어 캐릭터 스프라이트처럼 보여야 한다.
         ────────────────────
         [MAPLE PLAYER FRAME SPEC]
-        한국 MMORPG 플레이어 아바타 구조
-        실제 메이플스토리 플레이어 캐릭터 비율 적용
-        * 머리 + 헤어 : 전체 높이의 60~65%
-        * 몸통 : 15~18%
-        * 다리 : 20~25%
-        * 2.0~2.3등신
+        실제 메이플스토리 플레이어 캐릭터 비율 (귀엽지만 대두 아님)
+        * 약 2.5~3등신 — 메이플 특유의 아담하고 귀여운 비율
+        * 머리 + 헤어 : 전체 높이의 약 38~45%
+        * 몸통 : 약 25~30%
+        * 다리 : 약 28~33%
+        * 머리(두상+헤어 볼륨 포함)는 어깨 너비의 1.3배를 넘지 않는다
         시점
-        * 35~45도 Quarter View
-        * 양쪽 눈이 모두 보여야 함
-        * 거의 평면적인 2D 스프라이트
+        * 정면 ~ 살짝 측면(약 30도) 뷰
+        * 양쪽 눈이 모두 보임
+        * 평면적인 2D 스프라이트
         얼굴
-        * 눈은 얼굴 하단부에 위치
-        * 눈 간격 넓음
-        * 가로로 넓은 평평한 눈
-        * 큰 눈동자
-        * 눈동자 하이라이트
-        * 코 표현 금지
-        * 매우 작은 입
-        * 부드러운 홍조
+        * 눈은 얼굴 하단부, 간격 넓게, 가로로 넓고 큰 눈동자 + 하이라이트
+        * 코 표현 금지 / 매우 작은 입 / 부드러운 홍조
         목
-        * 목 표현 금지
-        * 머리가 몸통에 바로 연결
-        * 턱 아래 바로 의상 시작
+        * 목 표현 최소화, 머리가 몸통에 자연스럽게 연결, 턱 아래 바로 의상 시작
         헤어
-        * 캐릭터 정체성의 핵심
-        * 두상보다 훨씬 큰 볼륨
-        * 실루엣 우선
-        * 가닥 표현 최소화
-        * 상단 하이라이트 존재
+        * 캐릭터 정체성의 핵심 — 깔끔한 실루엣 우선, 가닥 표현 최소화, 상단 하이라이트
+        * 단, 헤어 볼륨 때문에 머리 전체가 비대해지지 않도록 적당히 (대두 금지)
         신체
-        * 매우 작은 몸통
-        * 짧은 팔
-        * 짧은 다리
-        * 단순한 원통형 팔다리
-        * 관절 표현 최소화
-        장비
-        레이어 구조 유지
+        * 아담한 몸통, 짧고 단순한 원통형 팔다리, 관절 표현 최소화
+        * 팔은 정확히 2개, 다리는 정확히 2개
+        장비 (레이어 구조 유지)
         Hair / Hat / Face Accessory / Top / Bottom / Shoes / Cape / Weapon
-        장비와 헤어가 캐릭터 개성을 결정해야 함
+        장비와 헤어가 캐릭터 개성을 결정한다
         포즈
-        * Idle Standing Pose
-        * 캐릭터 선택창 느낌
+        * 혼자 가만히 서 있는 Idle Standing Pose (캐릭터 정보창의 단일 미리보기 느낌)
         * 점프 금지 / 전투 포즈 금지 / 액션 연출 금지
         ────────────────────
         [PIXEL RENDERING SPEC]
-        중요: 고해상도 픽셀아트 금지, Ultra Detailed Pixel Art 금지, HD Pixel Art 금지, Fine-Grained Pixel Art 금지
+        중요: 고해상도 픽셀아트 금지 (Ultra Detailed / HD / Fine-Grained Pixel Art 금지)
         목표: 32~64px 게임 스프라이트를 확대 표시한 느낌
-        * Low-resolution game sprite
-        * Enlarged MMORPG sprite
-        * Chunky pixel structure
-        * Grid-aligned pixel art
-        * Visible pixel blocks
-        * Clean 1px outline
-        * Limited color palette
-        * Flat color shading
-        * Solid tone pixel blocks
-        * Minimal shading
-        * No dithering / No smooth gradients / No airbrush effects
+        * Low-resolution enlarged MMORPG sprite
+        * Chunky, grid-aligned, visible pixel blocks
+        * Clean 1px outline / Limited color palette / Flat color shading
+        * No dithering / No smooth gradients / No airbrush
         ────────────────────
         [출력 조건]
-        Canvas Size: 1080 x 1080, Perfect Square Format, Pure White Background (#FFFFFF)
-        Single Character Only, Full Body Visible, Centered Composition
-        Character Occupies Approximately 75% Of Canvas Height
-        No Cropping, No Additional Characters, No Pets, No Environment, No Scene
-        No Background Objects, No Ground, No Text, No Logo, No Watermark, No UI
+        * Canvas 1080 x 1080, 정사각형, 순백색 배경(#FFFFFF)
+        * 화면에 캐릭터는 단 1명, 전신, 중앙 정렬
+        * 캐릭터가 캔버스 높이의 약 70~80% 차지
+        * 잘림 금지 / 추가 인물 금지 / 펫 금지 / 배경·바닥·소품 금지 / 텍스트·로고·워터마크·UI 금지
         ────────────────────
         [절대 금지]
-        Pokemon Style, Terraria Style, Stardew Valley Style, Ragnarok Online Style,
-        JRPG Battle Sprite, Octopath Traveler Style, Western Cartoon, Disney Style,
-        Realistic, Semi Realistic, 3D Render, Illustration, Concept Art, Splash Art,
-        Poster, Wallpaper, Anime Illustration, Digital Painting, Cinematic Lighting,
-        Ultra Detailed Sprite, High Definition Pixel Art, Fine-Grained Pixel Art,
-        Smooth Gradient Shading, Airbrush Shading
+        여러 명 / 2명 이상 / 쌍둥이 / 분신 / 군중 / 거울상 / 캐릭터 슬롯 나열,
+        대두(거대한 머리) / 머리 비대 / 기형 / 신체 왜곡 / 팔다리 꼬임 / 얼굴 뭉개짐,
+        Pokemon, Terraria, Stardew Valley, Ragnarok Online, JRPG Battle Sprite,
+        Octopath Traveler, Western Cartoon, Disney, Realistic, Semi Realistic,
+        3D Render, Illustration, Concept Art, Splash Art, Poster, Anime Illustration,
+        Digital Painting, Cinematic Lighting, Smooth Gradient, Airbrush
         ────────────────────
-        Create this person as a true MapleStory player avatar sprite wearing today's outfit exactly.
-        The result must look like an actual MapleStory player character, not a generic pixel-art character.
+        최종 확인: 화면에는 오늘의 의상을 정확히 입은 메이플스토리 플레이어 캐릭터가
+        "단 한 명"만, 대두 없이 자연스러운 메이플 비율로 서 있어야 한다.
         PROMPT;
     }
 }
