@@ -19,6 +19,9 @@
     </source>
     <php>
         <env name="APP_ENV" value="testing"/>
+        <env name="AVATAR_ENGINE" value="placeholder" force="true"/>
+        <env name="FAL_KEY" value="" force="true"/>
+        <env name="GEMINI_API_KEY" value="" force="true"/>
         <env name="APP_MAINTENANCE_DRIVER" value="file"/>
         <env name="BCRYPT_ROUNDS" value="4"/>
         <env name="BROADCAST_CONNECTION" value="null"/>

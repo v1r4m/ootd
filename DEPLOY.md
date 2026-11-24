@@ -78,6 +78,21 @@ docker exec eta-caddy-1 caddy reload --config /etc/caddy/Caddyfile
 `git pull → build → composer install → (APP_KEY) → migrate → optimize → up` 자동 수행.
 eta-caddy 쪽 설정은 한 번만 하면 되고, 이후엔 건드릴 필요 없다.
 
+### 기준 아바타 등록 (최초 1회, 헤어스타일별)
+
+아바타는 기준 아바타의 얼굴·화풍을 유지한 채 옷만 바꿔 생성된다. 기준 이미지는 git 에 없으니
+서버에 직접 올려 등록한다 (`storage/app/private/references/{handle}/` 에 512px 로 저장됨).
+
+```bash
+# 이미지를 프로젝트 안(예: storage/app/refs-upload/)에 올린 뒤
+C="docker compose -f compose.prod.yaml exec app php artisan avatar:reference"
+$C viram storage/app/refs-upload/bun.png                     # default: 헤어 언급 없을 때
+$C viram storage/app/refs-upload/bun.png      --style=bun
+$C viram storage/app/refs-upload/ponytail.png --style=ponytail
+$C viram storage/app/refs-upload/down.png     --style=down
+```
+기준 이미지는 단순한 옷·소품 없는 버전이 좋다(기준 이미지의 소품이 결과에 따라 나온다).
+
 ---
 
 ## 4. 백업
@@ -85,8 +100,8 @@ eta-caddy 쪽 설정은 한 번만 하면 되고, 이후엔 건드릴 필요 없
 ```bash
 # DB
 cp database/database.sqlite ~/backups/ootd-$(date +%F).sqlite
-# 생성된 아바타
-tar czf ~/backups/avatars-$(date +%F).tgz storage/app/public/avatars
+# 생성된 아바타 + 기준 아바타
+tar czf ~/backups/avatars-$(date +%F).tgz storage/app/public/avatars storage/app/private/references
 ```
 
 ---
@@ -114,5 +129,5 @@ sudo chown -R "$(id -u):$(id -g)" .
 ```
 
 ### 아바타 생성이 동기 처리
-요청 한 건이 Gemini 응답(10~20초)을 잡고 있는다. 1인용이라 지금은 문제없고
+요청 한 건이 fal 응답(번역 + 생성, 약 4~6초)을 잡고 있는다. 1인용이라 지금은 문제없고
 타임아웃(php 120s / Caddy 180s)도 넉넉하다. 트래픽이 늘면 큐 잡으로 빼는 게 다음 단계.
