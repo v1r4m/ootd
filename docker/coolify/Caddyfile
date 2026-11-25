@@ -1,0 +1,20 @@
+# 컨테이너 내부 plain HTTP. TLS·도메인 라우팅은 Coolify 프록시가 담당한다.
+{
+	admin off
+	auto_https off
+}
+
+:80 {
+	root * /var/www/html/public
+	encode gzip
+
+	# 같은 컨테이너의 php-fpm. 아바타 생성(번역+생성 수 초)을 넉넉히 기다린다.
+	php_fastcgi 127.0.0.1:9000 {
+		read_timeout 180s
+	}
+
+	file_server
+
+	@avatars path /storage/*
+	header @avatars Cache-Control "public, max-age=86400"
+}

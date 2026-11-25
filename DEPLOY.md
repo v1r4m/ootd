@@ -1,4 +1,56 @@
-# 배포 가이드 (EC2 + Docker Compose, 공용 프록시 뒤)
+# 배포 가이드
+
+- **Coolify** (권장): 아래 「Coolify 배포」 — 루트 `Dockerfile` 하나로 빌드, 데이터는 storage 볼륨 하나.
+- **EC2 + eta-caddy** (기존): 그 아래 0~5절 — `compose.prod.yaml` + `deploy.sh`.
+
+---
+
+## Coolify 배포
+
+루트 `Dockerfile` = php-fpm + Caddy 단일 컨테이너. 코드·vendor 는 이미지에 굽고,
+시작 시 `docker/coolify/entrypoint.sh` 가 마이그레이션 · 최초 시드 · storage:link · 캐시를 자동 수행한다.
+
+### 1. 리소스 생성
+- New Resource → GitHub 레포 `v1r4m/ootd`, 브랜치 `main`
+- **Build Pack: Dockerfile** (루트 `Dockerfile`)
+- **Ports Exposes: `80`**, Domain: `https://ootd.viram.dev`
+
+### 2. 영구 볼륨 (필수)
+- Persistent Storage → Volume, **Destination: `/var/www/html/storage`**
+- SQLite(`storage/database/database.sqlite`), 아바타, 기준 아바타, 세션/캐시가 전부 여기 들어간다.
+  이걸 안 걸면 재배포마다 데이터가 날아간다.
+
+### 3. 환경변수
+| 변수 | 값 |
+|---|---|
+| `APP_KEY` | **필수.** `echo "base64:$(openssl rand -base64 32)"` 로 한 번 만들고 고정 |
+| `APP_URL` | `https://ootd.viram.dev` |
+| `FAL_KEY` | **필수.** 없으면 아바타가 placeholder 로 나온다 |
+| 나머지 | `.env.production.example` 참고 (`APP_TIMEZONE=Asia/Seoul`, `APP_LOCALE=ko`, `SESSION_DRIVER=database`, `SESSION_SECURE_COOKIE=true`, `CACHE_STORE=database` 등) |
+
+`DB_CONNECTION=sqlite`, `DB_DATABASE`(볼륨 안 경로), `LOG_CHANNEL=stderr`, `AVATAR_ENGINE=fal` 은 이미지 기본값이라 안 넣어도 된다.
+`APP_UID/APP_GID/PROXY_NETWORK` 는 Coolify 에선 불필요.
+
+### 4. 배포 후 기준 아바타 등록 (최초 1회)
+Coolify 서버에 ssh 로 들어가 컨테이너에 이미지를 넣고 등록한다.
+```bash
+C=$(docker ps --filter "name=<coolify 리소스 이름>" -q | head -1)
+docker cp bun.png "$C":/tmp/ && docker cp ponytail.png "$C":/tmp/ && docker cp down.png "$C":/tmp/
+R="docker exec $C runuser -u www-data -- env HOME=/tmp php artisan avatar:reference"
+$R viram /tmp/bun.png
+$R viram /tmp/bun.png      --style=bun
+$R viram /tmp/ponytail.png --style=ponytail
+$R viram /tmp/down.png     --style=down
+```
+
+### 5. 기존 EC2 데이터 옮기기 (선택)
+EC2 의 `database/database.sqlite` → 볼륨의 `database/database.sqlite`,
+`storage/app/public/avatars/` → 볼륨의 `app/public/avatars/`, `storage/app/private/references/` → 볼륨의 `app/private/references/`.
+(`docker cp` 로 컨테이너의 `/var/www/html/storage/...` 에 넣은 뒤 `docker exec $C chown -R www-data:www-data /var/www/html/storage` 후 재시작)
+
+---
+
+# EC2 + eta-caddy 배포 (기존)
 
 `ootd.viram.dev` 에 올리는 절차.
 

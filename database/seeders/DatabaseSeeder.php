@@ -13,7 +13,7 @@ class DatabaseSeeder extends Seeder
             ['handle' => 'viram'],
             [
                 'display_name' => 'viram',
-                'base_look' => '검은색 짧은 단발머리, 갈색 눈',
+                'base_look' => '여자, 검은색 짧은 단발머리, 갈색 눈',
             ],
         );
     }

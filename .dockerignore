@@ -1,4 +1,18 @@
-# 빌드 컨텍스트 최소화 — 이미지엔 docker/ 설정 파일만 필요(코드는 런타임 바인드마운트).
-*
-!docker/php.ini
-!docker/fpm-logging.conf
+# Coolify 이미지(루트 Dockerfile)는 코드를 굽는다. 로컬 전용·비밀·생성물은 제외.
+.git
+.env
+.env.*
+!.env.example
+vendor
+node_modules
+public/storage
+public/hot
+public/build
+storage
+database/database.sqlite
+tests
+.phpunit.cache
+.idea
+.vscode
+.DS_Store
+*.log
